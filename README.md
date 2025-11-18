@@ -71,7 +71,21 @@ webpack(config, { isServer }) {
 }
 ```
 
-**You will see the correct AI spans** in both development and production modes.
+**Expected Result:**
+- OpenAI API calls should appear as child spans under the parent Sentry transaction
+- When testing http://localhost:3000/api/openai:
+  - Span name: `Generative AI model operation`
+  - Span op: `gen_ai.chat`
+  - This span should be a child of `api.route`
+- When testing http://localhost:3000/openai-test:
+  - Span name: `Generative AI model operation`
+  - Span op: `gen_ai.chat`
+  - This span should be a child of `ai.openai`
+- The `beforeSendTransaction` hook should log these spans in the console
+- Both input prompts and output completions should be captured (if `recordInputs` and `recordOutputs` are enabled)
+
+**Actual Result:**
+✅ **Working as expected** - You will see the correct AI spans in both development and production modes. The OpenAI SDK is properly instrumented by Sentry.
 
 ### ❌ Scenario 2: Using serverExternalPackages (Not Working)
 
@@ -84,94 +98,19 @@ const nextConfig: NextConfig = {
 };
 ```
 
-**AI spans will no longer show** in both development and production modes. This behavior persists regardless of the environment.
+**Expected Result:**
+- OpenAI API calls should appear as child spans under the parent Sentry transaction
+- When testing http://localhost:3000/api/openai:
+  - Span name: `Generative AI model operation`
+  - Span op: `gen_ai.chat`
+  - This span should be a child of `api.route`
+- When testing http://localhost:3000/openai-test:
+  - Span name: `Generative AI model operation`
+  - Span op: `gen_ai.chat`
+  - This span should be a child of `ai.openai`
+- The `beforeSendTransaction` hook should log these spans in the console
+- Both input prompts and output completions should be captured (if `recordInputs` and `recordOutputs` are enabled)
 
----
+**Actual Result:**
+❌ **Not working** - AI spans will no longer show in both development and production modes. Only the parent transaction span appears, without any child spans for OpenAI API calls. The OpenAI SDK is not being properly instrumented by Sentry. This behavior persists regardless of the environment.
 
-When running the application, observe the console output for:
-
-1. **Sentry Initialization**: Check if Sentry is initialized with the OpenAI integration
-2. **OpenAI Client Creation**: Look for debug logs about the OpenAI client being wrapped
-3. **Transaction Spans**: The `beforeSendTransaction` hook in `sentry.server.config.ts` will log all spans
-4. **Expected Behavior**: OpenAI API calls should appear as child spans under the parent Sentry span
-  - Look for `gen_ai.chat`
-5. **Actual Behavior**: If the issue persists, you won't see OpenAI-specific spans being captured
-
-## 📁 Key Files
-
-### Application Files
-
-- **`src/app/openai-test/page.tsx`**: Server component that tests OpenAI integration in a page context
-- **`src/app/api/openai/route.ts`**: API route that tests OpenAI integration in an API context
-- **`src/app/layout.tsx`**: Root layout component
-
-### Sentry Configuration
-
-- **`sentry.server.config.ts`**: Sentry configuration for Node.js runtime (includes OpenAI integration)
-- **`sentry.edge.config.ts`**: Sentry configuration for Edge runtime
-- **`src/instrumentation.ts`**: Next.js instrumentation file that loads Sentry based on runtime
-- **`next.config.ts`**: Next.js configuration with Sentry webpack plugin and OpenAI externalization
-
-### Configuration Details
-
-The `next.config.ts` file includes important webpack configuration:
-
-```javascript
-webpack(config, { isServer }) {
-  if (isServer) {
-    // Force 'openai' to be required dynamically (not bundled)
-    config.externals = config.externals || [];
-    config.externals.push('openai');
-  }
-  return config;
-}
-```
-
-This ensures that the OpenAI package is not bundled by webpack, allowing Sentry to properly instrument it at runtime.
-
-## 🔧 Sentry Configuration
-
-The Sentry server configuration (`sentry.server.config.ts`) includes:
-
-```javascript
-integrations: [
-  Sentry.openAIIntegration({
-    recordInputs: true,
-    recordOutputs: true,
-  }),
-]
-```
-
-This should automatically instrument OpenAI SDK calls and create spans with input/output data.
-
-## 📊 Expected Results
-
-When properly instrumented, you should see:
-
-1. A parent span for the request/page load
-2. Child spans for OpenAI API calls with:
-   - Operation type: `gen__ai.chat` 
-
-## 🚨 Current Issue
-
-If OpenAI is not being patched correctly, you will only see:
-
-1. The parent span (`openai-test-page` or `openai-api-test`)
-2. No child spans for the actual OpenAI API calls
-3. Console logs showing `Is wrapped? false` in the API route
-
-## 🐞 Debugging
-
-Check the console output when the application runs. The following debug logs are included:
-
-- `[Sentry] Initializing Sentry...`: Confirms Sentry is loading
-- `[Sentry] Sentry initialized`: Confirms initialization complete
-- `[Sentry] Transaction:`: Lists all spans in each transaction
-
-## 📝 Notes
-
-- This repo uses Next.js 15.5.4 with React 19
-- OpenAI SDK version: 5.18.0
-- Sentry Next.js SDK version: 10.22.0
-- The `TURBOPACK=0` flag is used to disable Turbopack for better debugging
-- Webpack is configured to externalize the OpenAI package to allow runtime instrumentation
