@@ -4,7 +4,7 @@ This repository is a minimal reproduction case for testing OpenAI instrumentatio
 
 ## 🐛 Issue
 
-OpenAI SDK is not being correctly patched by Sentry's automatic instrumentation, resulting in missing spans and telemetry data for OpenAI API calls.
+OpenAI SDK is not being correctly patched by Sentry's automatic instrumentation, resulting in missing spans and telemetry data for OpenAI API calls. More context can be found here https://linear.app/getsentry/issue/JS-1085/investigate-openai-missing-spans-for-nextjs
 
 ## 📋 Setup
 
@@ -36,11 +36,6 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 # Optional: Sentry Configuration (for sending data to your own Sentry project)
 SENTRY_DSN=your_sentry_dsn_here
-SENTRY_ORG=your_sentry_org_slug
-SENTRY_PROJECT=your_sentry_project_slug
-
-# Optional: Sentry Auth Token (for uploading source maps)
-SENTRY_AUTH_TOKEN=your_sentry_auth_token_here
 ```
 
 Note: If you don't provide Sentry credentials, the instrumentation will still run locally but won't send data to Sentry.
@@ -60,12 +55,46 @@ Visit the test endpoints:
 
 ## 🔍 What to Check
 
+### ✅ Scenario 1: Using Webpack Externals (Working)
+
+When running with the webpack configuration approach:
+
+```typescript
+webpack(config, { isServer }) {
+  if (isServer) {
+    // Force 'openai' to be required dynamically (not bundled)
+    // This allows Sentry to properly instrument the OpenAI SDK at runtime
+    config.externals = config.externals || [];
+    config.externals.push('openai');
+  }
+  return config;
+}
+```
+
+**You will see the correct AI spans** in both development and production modes.
+
+### ❌ Scenario 2: Using serverExternalPackages (Not Working)
+
+When you replace the webpack configuration with Next.js's `serverExternalPackages`:
+
+```typescript
+const nextConfig: NextConfig = {
+  serverExternalPackages: ['openai'],
+  // Remove or comment out the webpack configuration
+};
+```
+
+**AI spans will no longer show** in both development and production modes. This behavior persists regardless of the environment.
+
+---
+
 When running the application, observe the console output for:
 
 1. **Sentry Initialization**: Check if Sentry is initialized with the OpenAI integration
 2. **OpenAI Client Creation**: Look for debug logs about the OpenAI client being wrapped
 3. **Transaction Spans**: The `beforeSendTransaction` hook in `sentry.server.config.ts` will log all spans
 4. **Expected Behavior**: OpenAI API calls should appear as child spans under the parent Sentry span
+  - Look for `gen_ai.chat`
 5. **Actual Behavior**: If the issue persists, you won't see OpenAI-specific spans being captured
 
 ## 📁 Key Files
@@ -106,7 +135,6 @@ The Sentry server configuration (`sentry.server.config.ts`) includes:
 
 ```javascript
 integrations: [
-  Sentry.vercelAIIntegration(),
   Sentry.openAIIntegration({
     recordInputs: true,
     recordOutputs: true,
@@ -138,7 +166,6 @@ Check the console output when the application runs. The following debug logs are
 
 - `[Sentry] Initializing Sentry...`: Confirms Sentry is loading
 - `[Sentry] Sentry initialized`: Confirms initialization complete
-- `[API] Is wrapped?`: Shows if the OpenAI client is wrapped by Sentry
 - `[Sentry] Transaction:`: Lists all spans in each transaction
 
 ## 📝 Notes

@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 
 
 const nextConfig: NextConfig = {
+  // Works when using webpack configuration
   webpack(config, { isServer }) {
     if (isServer) {
       // Force 'openai' to be required dynamically (not bundled)
@@ -13,6 +14,8 @@ const nextConfig: NextConfig = {
     }
     return config;
   },
+  // Comment out the webpack configuration and uncomment the serverExternalPackages configuration to see the difference
+  // serverExternalPackages: ['openai'],
 };
 
 export default withSentryConfig(nextConfig, {

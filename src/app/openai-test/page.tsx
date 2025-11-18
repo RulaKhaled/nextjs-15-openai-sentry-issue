@@ -3,8 +3,6 @@ import { OpenAI } from 'openai';
 
 export const dynamic = 'force-dynamic';
 
-console.log('[Page] Loading openai-test page...');
-
 export default async function OpenaiTest() {
   console.log('[Page] Rendering OpenaiTest component');
 

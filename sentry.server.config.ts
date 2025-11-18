@@ -21,9 +21,7 @@ Sentry.init({
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
 
-  // Add Vercel AI Integration to automatically capture AI spans
   integrations: [
-    Sentry.vercelAIIntegration(),
     Sentry.openAIIntegration({
       recordInputs: true,
       recordOutputs: true,

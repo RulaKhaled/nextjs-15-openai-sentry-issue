@@ -15,10 +15,6 @@ console.log(
   typeof client,
   client.constructor.name
 );
-console.log(
-  '[API] Is wrapped?',
-  '__sentry_original__' in client || '__sentry_wrapped__' in client
-);
 
 export async function GET(request: Request) {
   console.log('[API] GET request received');
