@@ -122,9 +122,7 @@ When properly instrumented, you should see:
 
 1. A parent span for the request/page load
 2. Child spans for OpenAI API calls with:
-   - Operation type: `ai.openai` or similar
-   - Input/output data (prompts and completions)
-   - Timing information
+   - Operation type: `gen__ai.chat` 
 
 ## 🚨 Current Issue
 
@@ -150,11 +148,3 @@ Check the console output when the application runs. The following debug logs are
 - Sentry Next.js SDK version: 10.22.0
 - The `TURBOPACK=0` flag is used to disable Turbopack for better debugging
 - Webpack is configured to externalize the OpenAI package to allow runtime instrumentation
-
-## 🤝 Contributing
-
-If you find the issue or have a solution, please feel free to open an issue or pull request.
-
-## 📄 License
-
-MIT
